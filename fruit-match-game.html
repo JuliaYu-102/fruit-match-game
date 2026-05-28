@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍎 水果消消乐</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: white;
+            font-size: 42px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        .score-board {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .score-item {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .score-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .score-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .sound-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .sound-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .sound-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.3);
+        }
+
+        .sound-btn.active {
+            background: rgba(255,255,255,0.4);
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+
+        .game-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            background: linear-gradient(145deg, #e8e8e8, #f5f5f5);
+            padding: 10px;
+            border-radius: 15px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .cell.selected {
+            background: #ffd700;
+            transform: scale(1.15);
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        .cell.matched {
+            animation: matchPulse 0.5s ease-out;
+        }
+
+        .cell.fall {
+            animation: fallDown 0.3s ease-in;
+        }
+
+        .cell.hint {
+            animation: hintPulse 1s infinite;
+        }
+
+        @keyframes matchPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        @keyframes fallDown {
+            0% { transform: translateY(-50px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes hintPulse {
+            0%, 100% { box-shadow: 0 0 5px #00ff00; }
+            50% { box-shadow: 0 0 20px #00ff00; }
+        }
+
+        .game-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .game-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 100;
+            display: none;
+        }
+
+        .game-message.show {
+            display: block;
+            animation: showMessage 0.5s ease;
+        }
+
+        @keyframes showMessage {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .game-message h2 {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .combo-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 30px #ffd700;
+            pointer-events: none;
+            display: none;
+            z-index: 50;
+        }
+
+        .combo-display.show {
+            display: block;
+            animation: comboAnim 1s ease-out forwards;
+        }
+
+        @keyframes comboAnim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        .particles {
+            position: fixed;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .particle {
+            position: absolute;
+            font-size: 24px;
+            animation: particleFall 1s ease-out forwards;
+        }
+
+        @keyframes particleFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+        }
+
+        .tips {
+            margin-top: 20px;
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 600px) {
+            .cell {
+                width: 40px;
+                height: 40px;
+                font-size: 28px;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            .score-item {
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <h1>🍎 水果消消乐 🍊</h1>
+        <div class="score-board">
+            <div class="score-item">
+                <div class="score-label">分数</div>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">关卡</div>
+                <div class="score-value" id="level">1</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">目标</div>
+                <div class="score-value" id="target">1000</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sound-controls">
+        <button class="sound-btn active" id="musicBtn" onclick="toggleMusic()">🎵 音乐: 开</button>
+        <button class="sound-btn active" id="sfxBtn" onclick="toggleSfx()">🔊 音效: 开</button>
+    </div>
+
+    <div class="game-container">
+        <div class="game-board" id="gameBoard"></div>
+    </div>
+
+    <div class="game-controls">
+        <button class="btn btn-primary" onclick="playButtonSound(); newGame()">🔄 新游戏</button>
+        <button class="btn btn-success" onclick="playButtonSound(); showHint()">💡 提示</button>
+        <button class="btn btn-warning" onclick="playButtonSound(); pauseGame()">⏸️ 暂停</button>
+    </div>
+
+    <div class="tips">
+        💡 点击选择水果，再点击相邻的水果进行交换<br>
+        匹配3个或以上相同水果即可消除
+    </div>
+
+    <div class="game-message" id="gameMessage">
+        <h2 id="messageTitle">🎉 恭喜通关！</h2>
+        <p id="messageText">你的分数：0</p>
+        <button class="btn btn-primary" onclick="playButtonSound(); nextLevel()">下一关 ➡️</button>
+    </div>
+
+    <div class="combo-display" id="comboDisplay"></div>
+    <div class="particles" id="particles"></div>
+
+    <script>
+        const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍑', '🍒', '🥝'];
+        const BOARD_SIZE = 8;
+        const MATCH_COUNT = 3;
+
+        let board = [];
+        let selectedCell = null;
+        let score = 0;
+        let level = 1;
+        let targetScore = 1000;
+        let isProcessing = false;
+        let isPaused = false;
+        let comboCount = 0;
+
+        // Audio system
+        let audioContext = null;
+        let musicEnabled = true;
+        let sfxEnabled = true;
+        let musicInterval = null;
+        let currentNote = 0;
+
+        // Happy background music melody (like classic match-3 games)
+        const melody = [
+            659.25, 698.46, 783.99, 698.46, // E5, F5, G5, F5
+            659.25, 698.46, 783.99, 880.00, // E5, F5, G5, A5
+            880.00, 783.99, 698.46, 659.25, // A5, G5, F5, E5
+            587.33, 659.25, 698.46, 659.25, // D5, E5, F5, E5
+            587.33, 659.25, 523.25, 493.88, // D5, E5, C5, B4
+            523.25, 587.33, 659.25, 587.33  // C5, D5, E5, D5
+        ];
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        function playNote(frequency, duration, type = 'sine', volume = 0.1) {
+            if (!audioContext || !sfxEnabled) return;
+
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        function playSelectSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            playNote(800, 0.1, 'sine', 0.15);
+            setTimeout(() => playNote(1000, 0.1, 'sine', 0.1), 50);
+        }
+
+        function playSwapSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            playNote(400, 0.15, 'triangle', 0.2);
+            setTimeout(() => playNote(500, 0.15, 'triangle', 0.15), 100);
+        }
+
+        function playMatchSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            const notes = [523.25, 659.25, 783.99];
+            notes.forEach((freq, i) => {
+                setTimeout(() => playNote(freq, 0.2, 'sine', 0.15), i * 80);
+            });
+        }
+
+        function playEliminateSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            playNote(200, 0.3, 'square', 0.1);
+            setTimeout(() => playNote(150, 0.4, 'square', 0.08), 100);
+        }
+
+        function playComboSound(count) {
+            if (!sfxEnabled) return;
+            initAudio();
+            const baseFreq = 400 + count * 100;
+            for (let i = 0; i < Math.min(count, 5); i++) {
+                setTimeout(() => playNote(baseFreq + i * 150, 0.15, 'sine', 0.12), i * 60);
+            }
+        }
+
+        function playButtonSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            playNote(600, 0.08, 'sine', 0.1);
+        }
+
+        function playWinSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, i) => {
+                setTimeout(() => playNote(freq, 0.3, 'sine', 0.15), i * 150);
+            });
+        }
+
+        function playLevelUpSound() {
+            if (!sfxEnabled) return;
+            initAudio();
+            const melody = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50];
+            melody.forEach((freq, i) => {
+                setTimeout(() => playNote(freq, 0.15, 'sine', 0.1), i * 100);
+            });
+        }
+
+        function startBackgroundMusic() {
+            if (!musicEnabled || !audioContext) return;
+            
+            stopBackgroundMusic();
+            
+            currentNote = 0;
+            const playNextNote = () => {
+                if (!musicEnabled || isPaused) return;
+                
+                const freq = melody[currentNote];
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.35);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.35);
+                
+                currentNote = (currentNote + 1) % melody.length;
+            };
+            
+            playNextNote();
+            musicInterval = setInterval(playNextNote, 350);
+        }
+
+        function stopBackgroundMusic() {
+            if (musicInterval) {
+                clearInterval(musicInterval);
+                musicInterval = null;
+            }
+        }
+
+        function toggleMusic() {
+            musicEnabled = !musicEnabled;
+            const btn = document.getElementById('musicBtn');
+            btn.textContent = musicEnabled ? '🎵 音乐: 开' : '🎵 音乐: 关';
+            btn.classList.toggle('active', musicEnabled);
+            
+            if (musicEnabled && !isPaused) {
+                initAudio();
+                startBackgroundMusic();
+            } else {
+                stopBackgroundMusic();
+            }
+        }
+
+        function toggleSfx() {
+            sfxEnabled = !sfxEnabled;
+            const btn = document.getElementById('sfxBtn');
+            btn.textContent = sfxEnabled ? '🔊 音效: 开' : '🔊 音效: 关';
+            btn.classList.toggle('active', sfxEnabled);
+        }
+
+        function initGame() {
+            board = [];
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                board[i] = [];
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    board[i][j] = getRandomFruit(i, j);
+                }
+            }
+            renderBoard();
+            updateScore();
+            initAudio();
+            if (musicEnabled && !isPaused) {
+                startBackgroundMusic();
+            }
+        }
+
+        function getRandomFruit(row, col) {
+            let fruit;
+            let attempts = 0;
+            do {
+                fruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+                attempts++;
+            } while (attempts < 50 && wouldCreateMatch(row, col, fruit));
+            return fruit;
+        }
+
+        function wouldCreateMatch(row, col, fruit) {
+            if (col >= 2 && board[row][col-1] === fruit && board[row][col-2] === fruit) {
+                return true;
+            }
+            if (row >= 2 && board[row-1] && board[row-1][col] === fruit && 
+                board[row-2] && board[row-2][col] === fruit) {
+                return true;
+            }
+            return false;
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('gameBoard');
+            boardElement.innerHTML = '';
+            
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.textContent = board[i][j];
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.onclick = () => handleCellClick(i, j);
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(row, col) {
+            if (isProcessing || isPaused) return;
+            
+            const cellIndex = row * BOARD_SIZE + col;
+            const cells = document.querySelectorAll('.cell');
+            const clickedCell = cells[cellIndex];
+
+            if (selectedCell === null) {
+                selectedCell = { row, col };
+                clickedCell.classList.add('selected');
+                playSelectSound();
+            } else {
+                const prevIndex = selectedCell.row * BOARD_SIZE + selectedCell.col;
+                cells[prevIndex].classList.remove('selected');
+
+                if (isAdjacent(selectedCell, { row, col })) {
+                    playSwapSound();
+                    swapFruits(selectedCell.row, selectedCell.col, row, col);
+                }
+                selectedCell = null;
+            }
+        }
+
+        function isAdjacent(cell1, cell2) {
+            const rowDiff = Math.abs(cell1.row - cell2.row);
+            const colDiff = Math.abs(cell1.col - cell2.col);
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+
+        async function swapFruits(row1, col1, row2, col2) {
+            isProcessing = true;
+            
+            [board[row1][col1], board[row2][col2]] = [board[row2][col2], board[row1][col1]];
+            renderBoard();
+            
+            await sleep(200);
+            
+            const matches = findAllMatches();
+            if (matches.length > 0) {
+                comboCount = 0;
+                await processMatches();
+            } else {
+                [board[row1][col1], board[row2][col2]] = [board[row2][col2], board[row1][col1]];
+                renderBoard();
+            }
+            
+            isProcessing = false;
+        }
+
+        function findAllMatches() {
+            const matches = new Set();
+            
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE - MATCH_COUNT + 1; j++) {
+                    const fruit = board[i][j];
+                    if (fruit && board[i][j+1] === fruit && board[i][j+2] === fruit) {
+                        for (let k = 0; k < MATCH_COUNT; k++) {
+                            matches.add(`${i},${j+k}`);
+                        }
+                    }
+                }
+            }
+
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                for (let i = 0; i < BOARD_SIZE - MATCH_COUNT + 1; i++) {
+                    const fruit = board[i][j];
+                    if (fruit && board[i+1][j] === fruit && board[i+2][j] === fruit) {
+                        for (let k = 0; k < MATCH_COUNT; k++) {
+                            matches.add(`${i+k},${j}`);
+                        }
+                    }
+                }
+            }
+
+            return Array.from(matches).map(pos => {
+                const [row, col] = pos.split(',').map(Number);
+                return { row, col };
+            });
+        }
+
+        async function processMatches() {
+            let matches = findAllMatches();
+            
+            while (matches.length > 0) {
+                comboCount++;
+                
+                if (comboCount > 1) {
+                    showCombo(comboCount);
+                    playComboSound(comboCount);
+                }
+                
+                await removeMatches(matches);
+                await dropFruits();
+                await fillBoard();
+                
+                matches = findAllMatches();
+            }
+            
+            checkLevelComplete();
+        }
+
+        async function removeMatches(matches) {
+            const cells = document.querySelectorAll('.cell');
+            
+            playMatchSound();
+            
+            matches.forEach(({ row, col }) => {
+                const index = row * BOARD_SIZE + col;
+                cells[index].classList.add('matched');
+                createParticles(cells[index]);
+            });
+
+            const baseScore = 10;
+            const comboBonus = Math.max(0, comboCount - 1) * 5;
+            const matchScore = matches.length * (baseScore + comboBonus);
+            score += matchScore;
+            updateScore();
+
+            await sleep(500);
+
+            playEliminateSound();
+
+            matches.forEach(({ row, col }) => {
+                board[row][col] = null;
+            });
+
+            renderBoard();
+        }
+
+        async function dropFruits() {
+            let hasDropped = false;
+            
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                let emptyRow = BOARD_SIZE - 1;
+                
+                for (let i = BOARD_SIZE - 1; i >= 0; i--) {
+                    if (board[i][j] !== null) {
+                        if (i !== emptyRow) {
+                            board[emptyRow][j] = board[i][j];
+                            board[i][j] = null;
+                            hasDropped = true;
+                        }
+                        emptyRow--;
+                    }
+                }
+            }
+
+            if (hasDropped) {
+                renderBoard();
+                document.querySelectorAll('.cell').forEach(cell => {
+                    if (cell.textContent) {
+                        cell.classList.add('fall');
+                    }
+                });
+                await sleep(300);
+            }
+        }
+
+        async function fillBoard() {
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (board[i][j] === null) {
+                        board[i][j] = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+                    }
+                }
+            }
+            renderBoard();
+            document.querySelectorAll('.cell').forEach(cell => {
+                if (cell.textContent) {
+                    cell.classList.add('fall');
+                }
+            });
+            await sleep(300);
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('target').textContent = targetScore;
+        }
+
+        function checkLevelComplete() {
+            if (score >= targetScore) {
+                playWinSound();
+                showMessage('🎉 恭喜通关！', `你的分数：${score}`);
+            }
+        }
+
+        function showMessage(title, text) {
+            document.getElementById('messageTitle').textContent = title;
+            document.getElementById('messageText').textContent = text;
+            document.getElementById('gameMessage').classList.add('show');
+        }
+
+        function hideMessage() {
+            document.getElementById('gameMessage').classList.remove('show');
+        }
+
+        function nextLevel() {
+            hideMessage();
+            playLevelUpSound();
+            level++;
+            targetScore = level * 1000;
+            initGame();
+        }
+
+        function newGame() {
+            hideMessage();
+            stopBackgroundMusic();
+            score = 0;
+            level = 1;
+            targetScore = 1000;
+            comboCount = 0;
+            initGame();
+        }
+
+        function showHint() {
+            if (isProcessing || isPaused) return;
+            
+            const hint = findHint();
+            if (hint) {
+                playSelectSound();
+                const cells = document.querySelectorAll('.cell');
+                const index1 = hint.row1 * BOARD_SIZE + hint.col1;
+                const index2 = hint.row2 * BOARD_SIZE + hint.col2;
+                cells[index1].classList.add('hint');
+                cells[index2].classList.add('hint');
+                
+                setTimeout(() => {
+                    cells[index1].classList.remove('hint');
+                    cells[index2].classList.remove('hint');
+                }, 2000);
+            }
+        }
+
+        function findHint() {
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let j = 0; j < BOARD_SIZE; j++) {
+                    if (j < BOARD_SIZE - 1) {
+                        [board[i][j], board[i][j+1]] = [board[i][j+1], board[i][j]];
+                        if (findAllMatches().length > 0) {
+                            [board[i][j], board[i][j+1]] = [board[i][j+1], board[i][j]];
+                            return { row1: i, col1: j, row2: i, col2: j + 1 };
+                        }
+                        [board[i][j], board[i][j+1]] = [board[i][j+1], board[i][j]];
+                    }
+                    
+                    if (i < BOARD_SIZE - 1) {
+                        [board[i][j], board[i+1][j]] = [board[i+1][j], board[i][j]];
+                        if (findAllMatches().length > 0) {
+                            [board[i][j], board[i+1][j]] = [board[i+1][j], board[i][j]];
+                            return { row1: i, col1: j, row2: i + 1, col2: j };
+                        }
+                        [board[i][j], board[i+1][j]] = [board[i+1][j], board[i][j]];
+                    }
+                }
+            }
+            return null;
+        }
+
+        function pauseGame() {
+            isPaused = !isPaused;
+            const btn = document.querySelector('.btn-warning');
+            btn.textContent = isPaused ? '▶️ 继续' : '⏸️ 暂停';
+            
+            if (isPaused) {
+                stopBackgroundMusic();
+            } else if (musicEnabled) {
+                startBackgroundMusic();
+            }
+        }
+
+        function showCombo(count) {
+            const comboText = count >= 4 ? '🔥 超神！' : 
+                             count >= 3 ? '⭐⭐ 很好！' : '👍 不错！';
+            const comboDisplay = document.getElementById('comboDisplay');
+            comboDisplay.textContent = comboText;
+            comboDisplay.classList.remove('show');
+            void comboDisplay.offsetWidth;
+            comboDisplay.classList.add('show');
+        }
+
+        function createParticles(cell) {
+            const rect = cell.getBoundingClientRect();
+            const particles = document.getElementById('particles');
+            
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.textContent = cell.textContent;
+                particle.style.left = (rect.left + rect.width / 2 + (Math.random() - 0.5) * 50) + 'px';
+                particle.style.top = (rect.top + rect.height / 2) + 'px';
+                particle.style.animationDelay = (Math.random() * 0.3) + 's';
+                particles.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
